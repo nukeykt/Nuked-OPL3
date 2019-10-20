@@ -35,9 +35,16 @@
 #include <string.h>
 #include "opl3.h"
 
+#if OPL_ENABLE_STEREOEXT
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES 1
+#endif
+#include <math.h>
+#endif
+
 /* Quirk: Some FM channels are output one sample later on the left side than the right. */
 #ifndef OPL_QUIRK_CHANNELSAMPLEDELAY
-#define OPL_QUIRK_CHANNELSAMPLEDELAY 1
+#define OPL_QUIRK_CHANNELSAMPLEDELAY (!OPL_ENABLE_STEREOEXT)
 #endif
 
 #define RSM_FRAC    10
@@ -182,6 +189,15 @@ static const int8_t ad_slot[0x20] = {
 static const uint8_t ch_slot[18] = {
     0, 1, 2, 6, 7, 8, 12, 13, 14, 18, 19, 20, 24, 25, 26, 30, 31, 32
 };
+
+#if OPL_ENABLE_STEREOEXT
+/*
+    stereo extension panning table
+*/
+
+static int32_t panpot_lut[256];
+static uint8_t panpot_lut_build = 0;
+#endif
 
 /*
     Envelope generator
@@ -965,7 +981,25 @@ static void OPL3_ChannelWriteC0(opl3_channel *channel, uint8_t data)
     {
         channel->cha = channel->chb = (uint16_t)~0;
     }
+#if OPL_ENABLE_STEREOEXT
+    if (!channel->chip->stereoext)
+    {
+        channel->leftpan = channel->cha << 16;
+        channel->rightpan = channel->chb << 16;
+    }
+#endif
 }
+
+#if OPL_ENABLE_STEREOEXT
+static void OPL3_ChannelWriteD0(opl3_channel* channel, uint8_t data)
+{
+    if (channel->chip->stereoext)
+    {
+        channel->leftpan = panpot_lut[data ^ 0xff];
+        channel->rightpan = panpot_lut[data];
+    }
+}
+#endif
 
 static void OPL3_ChannelKeyOn(opl3_channel *channel)
 {
@@ -1087,7 +1121,11 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
         channel = &chip->channel[ii];
         out = channel->out;
         accm = *out[0] + *out[1] + *out[2] + *out[3];
+#if OPL_ENABLE_STEREOEXT
+        mix += (int16_t)((accm * channel->leftpan) >> 16);
+#else
         mix += (int16_t)(accm & channel->cha);
+#endif
     }
     chip->mixbuff[0] = mix;
 
@@ -1113,7 +1151,11 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
         channel = &chip->channel[ii];
         out = channel->out;
         accm = *out[0] + *out[1] + *out[2] + *out[3];
+#if OPL_ENABLE_STEREOEXT
+        mix += (int16_t)((accm * channel->rightpan) >> 16);
+#else
         mix += (int16_t)(accm & channel->chb);
+#endif
     }
     chip->mixbuff[1] = mix;
 
@@ -1250,6 +1292,10 @@ void OPL3_Reset(opl3_chip *chip, uint32_t samplerate)
         channel->chtype = ch_2op;
         channel->cha = 0xffff;
         channel->chb = 0xffff;
+#if OPL_ENABLE_STEREOEXT
+        channel->leftpan = 0x10000;
+        channel->rightpan = 0x10000;
+#endif
         channel->ch_num = channum;
         OPL3_ChannelSetupAlg(channel);
     }
@@ -1257,6 +1303,18 @@ void OPL3_Reset(opl3_chip *chip, uint32_t samplerate)
     chip->rateratio = (samplerate << RSM_FRAC) / 49716;
     chip->tremoloshift = 4;
     chip->vibshift = 1;
+
+#if OPL_ENABLE_STEREOEXT
+    if (!panpot_lut_build)
+    {
+        int32_t i;
+        for (i = 0; i < 256; i++)
+        {
+            panpot_lut[i] = (int32_t)(sin(i * M_PI / 512.0) * 65536.0);
+        }
+        panpot_lut_build = 1;
+    }
+#endif
 }
 
 void OPL3_WriteReg(opl3_chip *chip, uint16_t reg, uint8_t v)
@@ -1275,6 +1333,9 @@ void OPL3_WriteReg(opl3_chip *chip, uint16_t reg, uint8_t v)
                 break;
             case 0x05:
                 chip->newm = v & 0x01;
+#if OPL_ENABLE_STEREOEXT
+                chip->stereoext = (v >> 1) & 0x01;
+#endif
                 break;
             }
         }
@@ -1355,6 +1416,14 @@ void OPL3_WriteReg(opl3_chip *chip, uint16_t reg, uint8_t v)
             OPL3_ChannelWriteC0(&chip->channel[9 * high + (regm & 0x0f)], v);
         }
         break;
+#if OPL_ENABLE_STEREOEXT
+    case 0xd0:
+        if ((regm & 0x0f) < 9)
+        {
+            OPL3_ChannelWriteD0(&chip->channel[9 * high + (regm & 0x0f)], v);
+        }
+        break;
+#endif
     }
 }
 
