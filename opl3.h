@@ -33,6 +33,10 @@
 #ifndef OPL_OPL3_H
 #define OPL_OPL3_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <inttypes.h>
 
 #define OPL_WRITEBUF_SIZE   1024
@@ -140,5 +144,9 @@ void OPL3_Reset(opl3_chip *chip, uint32_t samplerate);
 void OPL3_WriteReg(opl3_chip *chip, uint16_t reg, uint8_t v);
 void OPL3_WriteRegBuffered(opl3_chip *chip, uint16_t reg, uint8_t v);
 void OPL3_GenerateStream(opl3_chip *chip, int16_t *sndptr, uint32_t numsamples);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
