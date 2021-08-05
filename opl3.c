@@ -37,7 +37,7 @@
 
 #define RSM_FRAC    10
 
-// Channel types
+/* Channel types */
 
 enum {
     ch_2op = 0,
@@ -46,7 +46,7 @@ enum {
     ch_drum = 3
 };
 
-// Envelope key types
+/* Envelope key types */
 
 enum {
     egk_norm = 0x01,
@@ -54,9 +54,9 @@ enum {
 };
 
 
-//
-// logsin table
-//
+/*
+    logsin table
+*/
 
 static const uint16_t logsinrom[256] = {
     0x859, 0x6c3, 0x607, 0x58b, 0x52e, 0x4e4, 0x4a6, 0x471,
@@ -93,9 +93,9 @@ static const uint16_t logsinrom[256] = {
     0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000
 };
 
-//
-// exp table
-//
+/*
+    exp table
+*/
 
 static const uint16_t exprom[256] = {
     0x7fa, 0x7f5, 0x7ef, 0x7ea, 0x7e4, 0x7df, 0x7da, 0x7d4,
@@ -132,19 +132,19 @@ static const uint16_t exprom[256] = {
     0x414, 0x411, 0x40e, 0x40b, 0x408, 0x406, 0x403, 0x400
 };
 
-//
-// freq mult table multiplied by 2
-//
-// 1/2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 12, 12, 15, 15
-//
+/*
+    freq mult table multiplied by 2
+
+    1/2, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 12, 12, 15, 15
+*/
 
 static const uint8_t mt[16] = {
     1, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 20, 24, 24, 30, 30
 };
 
-//
-// ksl table
-//
+/*
+    ksl table
+*/
 
 static const uint8_t kslrom[16] = {
     0, 32, 40, 45, 48, 51, 53, 55, 56, 58, 59, 60, 61, 62, 63, 64
@@ -154,9 +154,9 @@ static const uint8_t kslshift[4] = {
     8, 1, 2, 0
 };
 
-//
-// envelope generator constants
-//
+/*
+    envelope generator constants
+*/
 
 static const uint8_t eg_incstep[4][4] = {
     { 0, 0, 0, 0 },
@@ -165,9 +165,9 @@ static const uint8_t eg_incstep[4][4] = {
     { 1, 1, 1, 0 }
 };
 
-//
-// address decoding
-//
+/*
+    address decoding
+*/
 
 static const int8_t ad_slot[0x20] = {
     0, 1, 2, 3, 4, 5, -1, -1, 6, 7, 8, 9, 10, 11, -1, -1,
@@ -178,9 +178,9 @@ static const uint8_t ch_slot[18] = {
     0, 1, 2, 6, 7, 8, 12, 13, 14, 18, 19, 20, 24, 25, 26, 30, 31, 32
 };
 
-//
-// Envelope generator
-//
+/*
+    Envelope generator
+*/
 
 typedef int16_t(*envelope_sinfunc)(uint16_t phase, uint16_t envelope);
 typedef void(*envelope_genfunc)(opl3_slot *slott);
@@ -452,12 +452,12 @@ static void OPL3_EnvelopeCalc(opl3_slot *slot)
     eg_rout = slot->eg_rout;
     eg_inc = 0;
     eg_off = 0;
-    // Instant attack
+    /* Instant attack */
     if (reset && rate_hi == 0x0f)
     {
         eg_rout = 0x00;
     }
-    // Envelope off
+    /* Envelope off */
     if ((slot->eg_rout & 0x1f8) == 0x1f8)
     {
         eg_off = 1;
@@ -497,7 +497,7 @@ static void OPL3_EnvelopeCalc(opl3_slot *slot)
         break;
     }
     slot->eg_rout = (eg_rout + eg_inc) & 0x1ff;
-    // Key off
+    /* Key off */
     if (reset)
     {
         slot->eg_gen = envelope_gen_num_attack;
@@ -518,9 +518,9 @@ static void OPL3_EnvelopeKeyOff(opl3_slot *slot, uint8_t type)
     slot->key &= ~type;
 }
 
-//
-// Phase Generator
-//
+/*
+    Phase Generator
+*/
 
 static void OPL3_PhaseGenerate(opl3_slot *slot)
 {
@@ -564,17 +564,17 @@ static void OPL3_PhaseGenerate(opl3_slot *slot)
         slot->pg_phase = 0;
     }
     slot->pg_phase += (basefreq * mt[slot->reg_mult]) >> 1;
-    // Rhythm mode
+    /* Rhythm mode */
     noise = chip->noise;
     slot->pg_phase_out = phase;
-    if (slot->slot_num == 13) // hh
+    if (slot->slot_num == 13) /* hh */
     {
         chip->rm_hh_bit2 = (phase >> 2) & 1;
         chip->rm_hh_bit3 = (phase >> 3) & 1;
         chip->rm_hh_bit7 = (phase >> 7) & 1;
         chip->rm_hh_bit8 = (phase >> 8) & 1;
     }
-    if (slot->slot_num == 17 && (chip->rhy & 0x20)) // tc
+    if (slot->slot_num == 17 && (chip->rhy & 0x20)) /* tc */
     {
         chip->rm_tc_bit3 = (phase >> 3) & 1;
         chip->rm_tc_bit5 = (phase >> 5) & 1;
@@ -586,7 +586,7 @@ static void OPL3_PhaseGenerate(opl3_slot *slot)
                | (chip->rm_tc_bit3 ^ chip->rm_tc_bit5);
         switch (slot->slot_num)
         {
-        case 13: // hh
+        case 13: /* hh */
             slot->pg_phase_out = rm_xor << 9;
             if (rm_xor ^ (noise & 1))
             {
@@ -597,11 +597,11 @@ static void OPL3_PhaseGenerate(opl3_slot *slot)
                 slot->pg_phase_out |= 0x34;
             }
             break;
-        case 16: // sd
+        case 16: /* sd */
             slot->pg_phase_out = (chip->rm_hh_bit8 << 9)
                                | ((chip->rm_hh_bit8 ^ (noise & 1)) << 8);
             break;
-        case 17: // tc
+        case 17: /* tc */
             slot->pg_phase_out = (rm_xor << 9) | 0x80;
             break;
         default:
@@ -612,9 +612,9 @@ static void OPL3_PhaseGenerate(opl3_slot *slot)
     chip->noise = (noise >> 1) | (n_bit << 22);
 }
 
-//
-// Slot
-//
+/*
+    Slot
+*/
 
 static void OPL3_SlotWrite20(opl3_slot *slot, uint8_t data)
 {
@@ -682,9 +682,9 @@ static void OPL3_SlotCalcFB(opl3_slot *slot)
     slot->prout = slot->out;
 }
 
-//
-// Channel
-//
+/*
+    Channel
+*/
 
 static void OPL3_ChannelSetupAlg(opl3_channel *channel);
 
@@ -720,7 +720,7 @@ static void OPL3_ChannelUpdateRhythm(opl3_chip *chip, uint8_t data)
         OPL3_ChannelSetupAlg(channel6);
         OPL3_ChannelSetupAlg(channel7);
         OPL3_ChannelSetupAlg(channel8);
-        //hh
+        /* hh */
         if (chip->rhy & 0x01)
         {
             OPL3_EnvelopeKeyOn(channel7->slots[0], egk_drum);
@@ -729,7 +729,7 @@ static void OPL3_ChannelUpdateRhythm(opl3_chip *chip, uint8_t data)
         {
             OPL3_EnvelopeKeyOff(channel7->slots[0], egk_drum);
         }
-        //tc
+        /* tc */
         if (chip->rhy & 0x02)
         {
             OPL3_EnvelopeKeyOn(channel8->slots[1], egk_drum);
@@ -738,7 +738,7 @@ static void OPL3_ChannelUpdateRhythm(opl3_chip *chip, uint8_t data)
         {
             OPL3_EnvelopeKeyOff(channel8->slots[1], egk_drum);
         }
-        //tom
+        /* tom */
         if (chip->rhy & 0x04)
         {
             OPL3_EnvelopeKeyOn(channel8->slots[0], egk_drum);
@@ -747,7 +747,7 @@ static void OPL3_ChannelUpdateRhythm(opl3_chip *chip, uint8_t data)
         {
             OPL3_EnvelopeKeyOff(channel8->slots[0], egk_drum);
         }
-        //sd
+        /* sd */
         if (chip->rhy & 0x08)
         {
             OPL3_EnvelopeKeyOn(channel7->slots[1], egk_drum);
@@ -756,7 +756,7 @@ static void OPL3_ChannelUpdateRhythm(opl3_chip *chip, uint8_t data)
         {
             OPL3_EnvelopeKeyOff(channel7->slots[1], egk_drum);
         }
-        //bd
+        /* bd */
         if (chip->rhy & 0x10)
         {
             OPL3_EnvelopeKeyOn(channel6->slots[0], egk_drum);
