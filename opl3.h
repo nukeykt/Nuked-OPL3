@@ -125,7 +125,7 @@ struct _opl3_chip {
     uint8_t rm_hh_bit8;
     uint8_t rm_tc_bit3;
     uint8_t rm_tc_bit5;
-    //OPL3L
+    /* OPL3L */
     int32_t rateratio;
     int32_t samplecnt;
     int16_t oldsamples[2];
