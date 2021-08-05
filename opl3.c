@@ -1055,7 +1055,6 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     int16_t **out;
     int32_t mix;
     uint8_t ii;
-    uint8_t jj;
     int16_t accm;
     uint8_t shift = 0;
 
@@ -1075,11 +1074,7 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     {
         channel = &chip->channel[ii];
         out = channel->out;
-        accm = 0;
-        for (jj = 0; jj < 4; jj++)
-        {
-            accm += *out[jj];
-        }
+        accm = *out[0] + *out[1] + *out[2] + *out[3];
         mix += (int16_t)(accm & channel->cha);
     }
     chip->mixbuff[0] = mix;
@@ -1109,11 +1104,7 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     {
         channel = &chip->channel[ii];
         out = channel->out;
-        accm = 0;
-        for (jj = 0; jj < 4; jj++)
-        {
-            accm += *out[jj];
-        }
+        accm = *out[0] + *out[1] + *out[2] + *out[3];
         mix += (int16_t)(accm & channel->chb);
     }
     chip->mixbuff[1] = mix;
