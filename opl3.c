@@ -35,6 +35,11 @@
 #include <string.h>
 #include "opl3.h"
 
+/* Quirk: Some FM channels are output one sample later on the left side than the right. */
+#ifndef OPL_QUIRK_CHANNELSAMPLEDELAY
+#define OPL_QUIRK_CHANNELSAMPLEDELAY 1
+#endif
+
 #define RSM_FRAC    10
 
 /* Channel types */
@@ -1067,7 +1072,11 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
 
     buf[1] = OPL3_ClipSample(chip->mixbuff[1]);
 
+#if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 0; ii < 15; ii++)
+#else
+    for (ii = 0; ii < 36; ii++)
+#endif
     {
         OPL3_ProcessSlot(&chip->slot[ii]);
     }
@@ -1082,17 +1091,21 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     }
     chip->mixbuff[0] = mix;
 
+#if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 15; ii < 18; ii++)
     {
         OPL3_ProcessSlot(&chip->slot[ii]);
     }
+#endif
 
     buf[0] = OPL3_ClipSample(chip->mixbuff[0]);
 
+#if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 18; ii < 33; ii++)
     {
         OPL3_ProcessSlot(&chip->slot[ii]);
     }
+#endif
 
     mix = 0;
     for (ii = 0; ii < 18; ii++)
@@ -1104,10 +1117,12 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     }
     chip->mixbuff[1] = mix;
 
+#if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 33; ii < 36; ii++)
     {
         OPL3_ProcessSlot(&chip->slot[ii]);
     }
+#endif
 
     if ((chip->timer & 0x3f) == 0x3f)
     {
