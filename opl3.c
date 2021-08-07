@@ -1047,9 +1047,16 @@ static int16_t OPL3_ClipSample(int32_t sample)
     return (int16_t)sample;
 }
 
+static void OPL3_ProcessSlot(opl3_slot *slot)
+{
+    OPL3_SlotCalcFB(slot);
+    OPL3_EnvelopeCalc(slot);
+    OPL3_PhaseGenerate(slot);
+    OPL3_SlotGenerate(slot);
+}
+
 void OPL3_Generate(opl3_chip *chip, int16_t *buf)
 {
-    opl3_slot *slot;
     opl3_channel *channel;
     opl3_writebuf *writebuf;
     int16_t **out;
@@ -1062,11 +1069,7 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
 
     for (ii = 0; ii < 15; ii++)
     {
-        slot = &chip->slot[ii];
-        OPL3_SlotCalcFB(slot);
-        OPL3_EnvelopeCalc(slot);
-        OPL3_PhaseGenerate(slot);
-        OPL3_SlotGenerate(slot);
+        OPL3_ProcessSlot(&chip->slot[ii]);
     }
 
     mix = 0;
@@ -1081,22 +1084,14 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
 
     for (ii = 15; ii < 18; ii++)
     {
-        slot = &chip->slot[ii];
-        OPL3_SlotCalcFB(slot);
-        OPL3_EnvelopeCalc(slot);
-        OPL3_PhaseGenerate(slot);
-        OPL3_SlotGenerate(slot);
+        OPL3_ProcessSlot(&chip->slot[ii]);
     }
 
     buf[0] = OPL3_ClipSample(chip->mixbuff[0]);
 
     for (ii = 18; ii < 33; ii++)
     {
-        slot = &chip->slot[ii];
-        OPL3_SlotCalcFB(slot);
-        OPL3_EnvelopeCalc(slot);
-        OPL3_PhaseGenerate(slot);
-        OPL3_SlotGenerate(slot);
+        OPL3_ProcessSlot(&chip->slot[ii]);
     }
 
     mix = 0;
@@ -1111,11 +1106,7 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
 
     for (ii = 33; ii < 36; ii++)
     {
-        slot = &chip->slot[ii];
-        OPL3_SlotCalcFB(slot);
-        OPL3_EnvelopeCalc(slot);
-        OPL3_PhaseGenerate(slot);
-        OPL3_SlotGenerate(slot);
+        OPL3_ProcessSlot(&chip->slot[ii]);
     }
 
     if ((chip->timer & 0x3f) == 0x3f)
