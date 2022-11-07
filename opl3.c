@@ -978,10 +978,14 @@ static void OPL3_ChannelWriteC0(opl3_channel *channel, uint8_t data)
     {
         channel->cha = ((data >> 4) & 0x01) ? ~0 : 0;
         channel->chb = ((data >> 5) & 0x01) ? ~0 : 0;
+        channel->chc = ((data >> 6) & 0x01) ? ~0 : 0;
+        channel->chd = ((data >> 7) & 0x01) ? ~0 : 0;
     }
     else
     {
         channel->cha = channel->chb = (uint16_t)~0;
+        // TODO: Verify on real chip if DAC2 output is disabled in compat mode
+        channel->chc = channel->chd = 0;
     }
 #if OPL_ENABLE_STEREOEXT
     if (!channel->chip->stereoext)
@@ -1096,17 +1100,18 @@ static void OPL3_ProcessSlot(opl3_slot *slot)
     OPL3_SlotGenerate(slot);
 }
 
-void OPL3_Generate(opl3_chip *chip, int16_t *buf)
+inline void OPL3_Generate4Ch(opl3_chip *chip, int16_t *buf4)
 {
     opl3_channel *channel;
     opl3_writebuf *writebuf;
     int16_t **out;
-    int32_t mix;
+    int32_t mix[2];
     uint8_t ii;
     int16_t accm;
     uint8_t shift = 0;
 
-    buf[1] = OPL3_ClipSample(chip->mixbuff[1]);
+    buf4[1] = OPL3_ClipSample(chip->mixbuff[1]);
+    buf4[3] = OPL3_ClipSample(chip->mixbuff[3]);
 
 #if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 0; ii < 15; ii++)
@@ -1117,19 +1122,21 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
         OPL3_ProcessSlot(&chip->slot[ii]);
     }
 
-    mix = 0;
+    mix[0] = mix[1] = 0;
     for (ii = 0; ii < 18; ii++)
     {
         channel = &chip->channel[ii];
         out = channel->out;
         accm = *out[0] + *out[1] + *out[2] + *out[3];
 #if OPL_ENABLE_STEREOEXT
-        mix += (int16_t)((accm * channel->leftpan) >> 16);
+        mix[0] += (int16_t)((accm * channel->leftpan) >> 16);
 #else
-        mix += (int16_t)(accm & channel->cha);
-#endif
+        mix[0] += (int16_t)(accm & channel->cha);
+ #endif
+        mix[1] += (int16_t)(accm & channel->chc);
     }
-    chip->mixbuff[0] = mix;
+    chip->mixbuff[0] = mix[0];
+    chip->mixbuff[2] = mix[1];
 
 #if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 15; ii < 18; ii++)
@@ -1138,7 +1145,8 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     }
 #endif
 
-    buf[0] = OPL3_ClipSample(chip->mixbuff[0]);
+    buf4[0] = OPL3_ClipSample(chip->mixbuff[0]);
+    buf4[2] = OPL3_ClipSample(chip->mixbuff[2]);
 
 #if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 18; ii < 33; ii++)
@@ -1147,19 +1155,21 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     }
 #endif
 
-    mix = 0;
+    mix[0] = mix[1] = 0;
     for (ii = 0; ii < 18; ii++)
     {
         channel = &chip->channel[ii];
         out = channel->out;
         accm = *out[0] + *out[1] + *out[2] + *out[3];
 #if OPL_ENABLE_STEREOEXT
-        mix += (int16_t)((accm * channel->rightpan) >> 16);
+        mix[0] += (int16_t)((accm * channel->rightpan) >> 16);
 #else
-        mix += (int16_t)(accm & channel->chb);
-#endif
+        mix[0] += (int16_t)(accm & channel->chb);
+ #endif
+        mix[1] += (int16_t)(accm & channel->chd);
     }
-    chip->mixbuff[1] = mix;
+    chip->mixbuff[1] = mix[0];
+    chip->mixbuff[3] = mix[1];
 
 #if OPL_QUIRK_CHANNELSAMPLEDELAY
     for (ii = 33; ii < 36; ii++)
@@ -1234,20 +1244,42 @@ void OPL3_Generate(opl3_chip *chip, int16_t *buf)
     chip->writebuf_samplecnt++;
 }
 
-void OPL3_GenerateResampled(opl3_chip *chip, int16_t *buf)
+void OPL3_Generate(opl3_chip *chip, int16_t *buf)
+{
+    int16_t samples[4];
+    OPL3_Generate4Ch(chip, samples);
+    buf[0] = samples[0];
+    buf[1] = samples[1];
+}
+
+void OPL3_Generate4ChResampled(opl3_chip *chip, int16_t *buf4)
 {
     while (chip->samplecnt >= chip->rateratio)
     {
         chip->oldsamples[0] = chip->samples[0];
         chip->oldsamples[1] = chip->samples[1];
-        OPL3_Generate(chip, chip->samples);
+        chip->oldsamples[2] = chip->samples[2];
+        chip->oldsamples[3] = chip->samples[3];
+        OPL3_Generate4Ch(chip, chip->samples);
         chip->samplecnt -= chip->rateratio;
     }
-    buf[0] = (int16_t)((chip->oldsamples[0] * (chip->rateratio - chip->samplecnt)
-                     + chip->samples[0] * chip->samplecnt) / chip->rateratio);
-    buf[1] = (int16_t)((chip->oldsamples[1] * (chip->rateratio - chip->samplecnt)
-                     + chip->samples[1] * chip->samplecnt) / chip->rateratio);
+    buf4[0] = (int16_t)((chip->oldsamples[0] * (chip->rateratio - chip->samplecnt)
+                        + chip->samples[0] * chip->samplecnt) / chip->rateratio);
+    buf4[1] = (int16_t)((chip->oldsamples[1] * (chip->rateratio - chip->samplecnt)
+                        + chip->samples[1] * chip->samplecnt) / chip->rateratio);
+    buf4[2] = (int16_t)((chip->oldsamples[2] * (chip->rateratio - chip->samplecnt)
+                        + chip->samples[2] * chip->samplecnt) / chip->rateratio);
+    buf4[3] = (int16_t)((chip->oldsamples[3] * (chip->rateratio - chip->samplecnt)
+                        + chip->samples[3] * chip->samplecnt) / chip->rateratio);
     chip->samplecnt += 1 << RSM_FRAC;
+}
+
+void OPL3_GenerateResampled(opl3_chip *chip, int16_t *buf)
+{
+    int16_t samples[4];
+    OPL3_Generate4ChResampled(chip, samples);
+    buf[0] = samples[0];
+    buf[1] = samples[1];
 }
 
 void OPL3_Reset(opl3_chip *chip, uint32_t samplerate)
@@ -1461,9 +1493,26 @@ void OPL3_WriteRegBuffered(opl3_chip *chip, uint16_t reg, uint8_t v)
     chip->writebuf_last = (writebuf_last + 1) % OPL_WRITEBUF_SIZE;
 }
 
+void OPL3_Generate4ChStream(opl3_chip *chip, int16_t *sndptr1, int16_t *sndptr2, uint32_t numsamples)
+{
+    uint_fast32_t i;
+    int16_t samples[4];
+
+    for(i = 0; i < numsamples; i++)
+    {
+        OPL3_Generate4ChResampled(chip, samples);
+        sndptr1[0] = samples[0];
+        sndptr1[1] = samples[1];
+        sndptr2[0] = samples[2];
+        sndptr2[1] = samples[3];
+        sndptr1 += 2;
+        sndptr2 += 2;
+    }
+}
+
 void OPL3_GenerateStream(opl3_chip *chip, int16_t *sndptr, uint32_t numsamples)
 {
-    uint32_t i;
+    uint_fast32_t i;
 
     for(i = 0; i < numsamples; i++)
     {
