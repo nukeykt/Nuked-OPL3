@@ -946,10 +946,8 @@ static void OPL3_ChannelSetupAlg(opl3_channel *channel)
     }
 }
 
-static void OPL3_ChannelWriteC0(opl3_channel *channel, uint8_t data)
+static void OPL3_ChannelUpdateAlg(opl3_channel *channel)
 {
-    channel->fb = (data & 0x0e) >> 1;
-    channel->con = data & 0x01;
     channel->alg = channel->con;
     if (channel->chip->newm)
     {
@@ -974,6 +972,13 @@ static void OPL3_ChannelWriteC0(opl3_channel *channel, uint8_t data)
     {
         OPL3_ChannelSetupAlg(channel);
     }
+}
+
+static void OPL3_ChannelWriteC0(opl3_channel *channel, uint8_t data)
+{
+    channel->fb = (data & 0x0e) >> 1;
+    channel->con = data & 0x01;
+    OPL3_ChannelUpdateAlg(channel);
     if (channel->chip->newm)
     {
         channel->cha = ((data >> 4) & 0x01) ? ~0 : 0;
@@ -1070,11 +1075,14 @@ static void OPL3_ChannelSet4Op(opl3_chip *chip, uint8_t data)
         {
             chip->channel[chnum].chtype = ch_4op;
             chip->channel[chnum + 3].chtype = ch_4op2;
+            OPL3_ChannelUpdateAlg(&chip->channel[chnum]);
         }
         else
         {
             chip->channel[chnum].chtype = ch_2op;
             chip->channel[chnum + 3].chtype = ch_2op;
+            OPL3_ChannelUpdateAlg(&chip->channel[chnum]);
+            OPL3_ChannelUpdateAlg(&chip->channel[chnum+3]);
         }
     }
 }
