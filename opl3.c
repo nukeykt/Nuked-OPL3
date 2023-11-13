@@ -1469,6 +1469,35 @@ void OPL3_WriteReg(opl3_chip *chip, uint16_t reg, uint8_t v)
     }
 }
 
+void OPL3_WriteRegDelayed(opl3_chip *chip, uint16_t reg, uint8_t v, uint64_t delay)
+{
+    uint64_t currentTime;
+    opl3_writebuf *writebuf = &chip->writebuf[chip->writebuf_last];
+
+    currentTime = chip->writebuf_lasttime;
+
+    /* If we've overflowed the ringbuffer, process the next event early */
+    if (writebuf->reg & 0x200)
+    {
+        OPL3_WriteReg(chip, writebuf->reg & 0x1ff, writebuf->data);
+    }
+
+    /* If the previous write was in the past... */
+    if (currentTime < chip->writebuf_samplecnt)
+    {
+        currentTime = chip->writebuf_samplecnt;
+    }
+
+    /* Schedule the write. */
+    writebuf->time = currentTime + delay;
+    writebuf->reg = reg | 0x200;
+    writebuf->data = v;
+
+    /* Advance the writebuf ringbuffer. */
+    chip->writebuf_last = (chip->writebuf_last + 1) % OPL_WRITEBUF_SIZE;
+    chip->writebuf_lasttime = writebuf->time;
+}
+
 void OPL3_WriteRegBuffered(opl3_chip *chip, uint16_t reg, uint8_t v)
 {
     uint64_t time1, time2;
