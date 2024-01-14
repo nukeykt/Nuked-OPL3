@@ -33,6 +33,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+#define inline		__inline
+#endif
+
 #include "opl3.h"
 
 #if OPL_ENABLE_STEREOEXT && !defined OPL_SIN
