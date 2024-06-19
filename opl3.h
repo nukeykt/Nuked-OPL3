@@ -115,7 +115,7 @@ struct _opl3_chip {
     opl3_channel channel[18];
     opl3_slot slot[36];
     uint16_t timer;
-    uint64_t eg_timer;
+    uint16_t eg_timer;
     uint8_t eg_timerrem;
     uint8_t eg_state;
     uint8_t eg_add;
