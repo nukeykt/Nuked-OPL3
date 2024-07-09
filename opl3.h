@@ -33,6 +33,20 @@
 #ifndef OPL_OPL3_H
 #define OPL_OPL3_H
 
+#if defined(OPL_SHARED_LIB) && defined(WIN32)
+
+#ifdef OPL_SHARED_LIB_SRC
+#define OPL_API __declspec(dllexport)
+#else
+#define OPL_API __declspec(dllimport)
+#endif
+
+#else
+
+#define OPL_API
+
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -155,16 +169,16 @@ struct _opl3_chip {
     opl3_writebuf writebuf[OPL_WRITEBUF_SIZE];
 };
 
-void OPL3_Generate(opl3_chip *chip, int16_t *buf);
-void OPL3_GenerateResampled(opl3_chip *chip, int16_t *buf);
-void OPL3_Reset(opl3_chip *chip, uint32_t samplerate);
-void OPL3_WriteReg(opl3_chip *chip, uint16_t reg, uint8_t v);
-void OPL3_WriteRegBuffered(opl3_chip *chip, uint16_t reg, uint8_t v);
-void OPL3_GenerateStream(opl3_chip *chip, int16_t *sndptr, uint32_t numsamples);
+OPL_API void OPL3_Generate(opl3_chip *chip, int16_t *buf);
+OPL_API void OPL3_GenerateResampled(opl3_chip *chip, int16_t *buf);
+OPL_API void OPL3_Reset(opl3_chip *chip, uint32_t samplerate);
+OPL_API void OPL3_WriteReg(opl3_chip *chip, uint16_t reg, uint8_t v);
+OPL_API void OPL3_WriteRegBuffered(opl3_chip *chip, uint16_t reg, uint8_t v);
+OPL_API void OPL3_GenerateStream(opl3_chip *chip, int16_t *sndptr, uint32_t numsamples);
 
-void OPL3_Generate4Ch(opl3_chip *chip, int16_t *buf4);
-void OPL3_Generate4ChResampled(opl3_chip *chip, int16_t *buf4);
-void OPL3_Generate4ChStream(opl3_chip *chip, int16_t *sndptr1, int16_t *sndptr2, uint32_t numsamples);
+OPL_API void OPL3_Generate4Ch(opl3_chip *chip, int16_t *buf4);
+OPL_API void OPL3_Generate4ChResampled(opl3_chip *chip, int16_t *buf4);
+OPL_API void OPL3_Generate4ChStream(opl3_chip *chip, int16_t *sndptr1, int16_t *sndptr2, uint32_t numsamples);
 
 #ifdef __cplusplus
 }
