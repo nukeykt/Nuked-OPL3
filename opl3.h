@@ -95,7 +95,9 @@ struct _opl3_channel {
 
     uint8_t chtype;
     uint16_t f_num;
+    uint16_t f_num_reg;
     uint8_t block;
+    uint8_t block_reg;
     uint8_t fb;
     uint8_t con;
     uint8_t alg;

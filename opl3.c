@@ -803,45 +803,54 @@ static void OPL3_ChannelUpdateRhythm(opl3_chip *chip, uint8_t data)
     }
 }
 
-static void OPL3_ChannelWriteA0(opl3_channel *channel, uint8_t data)
+static void OPL3_ChannelUpdateFrequency(opl3_channel *channel)
 {
-    if (channel->chip->newm && channel->chtype == ch_4op2)
-    {
-        return;
-    }
-    channel->f_num = (channel->f_num & 0x300) | data;
     channel->ksv = (channel->block << 1)
                  | ((channel->f_num >> (0x09 - channel->chip->nts)) & 0x01);
     OPL3_EnvelopeUpdateKSL(channel->slotz[0]);
     OPL3_EnvelopeUpdateKSL(channel->slotz[1]);
+}
+
+static void OPL3_ChannelRestoreFrequency(opl3_channel *channel)
+{
+    channel->f_num = channel->f_num_reg;
+    channel->block = channel->block_reg;
+    OPL3_ChannelUpdateFrequency(channel);
+}
+
+static void OPL3_ChannelSync4Op(opl3_channel *channel)
+{
+    channel->pair->f_num = channel->f_num;
+    channel->pair->block = channel->block;
+    OPL3_ChannelUpdateFrequency(channel->pair);
+}
+
+static void OPL3_ChannelWriteA0(opl3_channel *channel, uint8_t data)
+{
+    channel->f_num_reg = (channel->f_num_reg & 0x300) | data;
+    if (channel->chip->newm && channel->chtype == ch_4op2)
+    {
+        return;
+    }
+    OPL3_ChannelRestoreFrequency(channel);
     if (channel->chip->newm && channel->chtype == ch_4op)
     {
-        channel->pair->f_num = channel->f_num;
-        channel->pair->ksv = channel->ksv;
-        OPL3_EnvelopeUpdateKSL(channel->pair->slotz[0]);
-        OPL3_EnvelopeUpdateKSL(channel->pair->slotz[1]);
+        OPL3_ChannelSync4Op(channel);
     }
 }
 
 static void OPL3_ChannelWriteB0(opl3_channel *channel, uint8_t data)
 {
+    channel->f_num_reg = (channel->f_num_reg & 0xff) | ((data & 0x03) << 8);
+    channel->block_reg = (data >> 2) & 0x07;
     if (channel->chip->newm && channel->chtype == ch_4op2)
     {
         return;
     }
-    channel->f_num = (channel->f_num & 0xff) | ((data & 0x03) << 8);
-    channel->block = (data >> 2) & 0x07;
-    channel->ksv = (channel->block << 1)
-                 | ((channel->f_num >> (0x09 - channel->chip->nts)) & 0x01);
-    OPL3_EnvelopeUpdateKSL(channel->slotz[0]);
-    OPL3_EnvelopeUpdateKSL(channel->slotz[1]);
+    OPL3_ChannelRestoreFrequency(channel);
     if (channel->chip->newm && channel->chtype == ch_4op)
     {
-        channel->pair->f_num = channel->f_num;
-        channel->pair->block = channel->block;
-        channel->pair->ksv = channel->ksv;
-        OPL3_EnvelopeUpdateKSL(channel->pair->slotz[0]);
-        OPL3_EnvelopeUpdateKSL(channel->pair->slotz[1]);
+        OPL3_ChannelSync4Op(channel);
     }
 }
 
@@ -1075,12 +1084,14 @@ static void OPL3_ChannelSet4Op(opl3_chip *chip, uint8_t data)
         {
             chip->channel[chnum].chtype = ch_4op;
             chip->channel[chnum + 3u].chtype = ch_4op2;
+            OPL3_ChannelSync4Op(&chip->channel[chnum]);
             OPL3_ChannelUpdateAlg(&chip->channel[chnum]);
         }
         else
         {
             chip->channel[chnum].chtype = ch_2op;
             chip->channel[chnum + 3u].chtype = ch_2op;
+            OPL3_ChannelRestoreFrequency(&chip->channel[chnum + 3u]);
             OPL3_ChannelUpdateAlg(&chip->channel[chnum]);
             OPL3_ChannelUpdateAlg(&chip->channel[chnum + 3u]);
         }
