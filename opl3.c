@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define OPL_SHARED_LIB_SRC
 #include "opl3.h"
 
 #if OPL_ENABLE_STEREOEXT && !defined OPL_SIN
