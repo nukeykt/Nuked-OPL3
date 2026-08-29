@@ -1,5 +1,7 @@
-/* Nuked OPL3
- * Copyright (C) 2013-2020 Nuke.YKT
+/*
+ * SPDX-License-Identifier: LGPL-2.1-or-later
+ *
+ * Copyright (C) 2013-2021  Nuke.YKT
  *
  * This file is part of Nuked OPL3.
  *
